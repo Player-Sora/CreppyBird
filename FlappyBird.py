@@ -2,23 +2,25 @@ import time
 import pygame
 import os
 import random
-#Alterações Grupo 2
+# Alterações Grupo 2
+from pygame.locals import QUIT, KEYDOWN, K_p
 # pip install Pillow
 from PIL import Image, ImageSequence
+
 TELA_LARGURA = 500
 TELA_ALTURA = 800
 
-IMAGEM_CANO = pygame.transform.scale2x(pygame.image.load(os.path.join( 'imgs', 'caixao.png')))
-IMAGEM_CHAO = pygame.transform.scale2x(pygame.image.load(os.path.join( 'imgs', 'base.jpg')))
-IMAGEM_BACKGROUND_ORIGINAL = pygame.image.load(os.path.join( 'imgs', 'background_cemiterio.png'))
+IMAGEM_CANO = pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', 'caixao.png')))
+IMAGEM_CHAO = pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', 'base.jpg')))
+IMAGEM_BACKGROUND_ORIGINAL = pygame.image.load(os.path.join('imgs', 'background_cemiterio.png'))
 
-#Alteração grupo 3
+# Alteração grupo 3
 pygame.mixer.init()
 musica_de_fundo = pygame.mixer.music.load(os.path.join('sons', 'this-is-halloween-172354.mp3'))
 pygame.mixer.music.set_volume(0.5)
-som_contagem = pygame.mixer.Sound(os.path.join('sons','smw_kick.wav'))
+som_contagem = pygame.mixer.Sound(os.path.join('sons', 'smw_kick.wav'))
 som_pulo = pygame.mixer.Sound(os.path.join('sons', 'mixkit-player-jumping-in-a-video-game-2043.wav'))
-som_colisão = pygame.mixer.Sound(os.path.join('sons','mixkit-arcade-fast-game-over-233.wav'))
+som_colisão = pygame.mixer.Sound(os.path.join('sons', 'mixkit-arcade-fast-game-over-233.wav'))
 som_pulo.set_volume(0.2)
 
 def contagem(seconds, tela):
@@ -39,7 +41,7 @@ def contagem(seconds, tela):
 largura_original = IMAGEM_BACKGROUND_ORIGINAL.get_width()
 altura_original = IMAGEM_BACKGROUND_ORIGINAL.get_height()
 fator_escala = 0.5
-# Calculo das novas dimensões
+# Cálculo das novas dimensões
 TELA_LARGURA = int(largura_original * fator_escala)
 TELA_ALTURA = int(altura_original * fator_escala)
 
@@ -56,13 +58,13 @@ def load_gif(filename):
         )
         frames.append(pygame.transform.scale2x(pygame_surface))
     return frames
+
 IMAGENS_CORVO = load_gif(os.path.join('imgs', 'crow.gif'))
 
 pygame.font.init()
 FONTE_PONTOS = pygame.font.SysFont('arial', 50)
 
-
-class Passaro:
+class Passaro(pygame.sprite.Sprite):
     IMGS = IMAGENS_CORVO 
     # animações da rotação
     ROTACAO_MAXIMA = 25
@@ -70,6 +72,7 @@ class Passaro:
     TEMPO_ANIMACAO = 5
 
     def __init__(self, x, y):
+        super().__init__()
         self.x = x
         self.y = y
         self.angulo = 0
@@ -78,6 +81,9 @@ class Passaro:
         self.tempo = 0
         self.contagem_imagem = 0
         self.imagem = self.IMGS[0]
+        self.rect = self.imagem.get_rect()  # Definindo o rect da imagem
+        self.rect.topleft = (x, y)
+        self.image = self.imagem
 
     def pular(self):
         self.velocidade = -10.5
@@ -121,7 +127,6 @@ class Passaro:
             self.imagem = self.IMGS[0]
             self.contagem_imagem = 0
 
-
         # se o passaro tiver caindo eu não vou bater asa
         if self.angulo <= -80:
             self.imagem = self.IMGS[1]
@@ -136,7 +141,7 @@ class Passaro:
     def get_mask(self):
         return pygame.mask.from_surface(self.imagem)
 
-
+# Alterações Grupo 5
 class Cano:
     DISTANCIA = 200
     VELOCIDADE = 5
@@ -156,8 +161,9 @@ class Cano:
         self.pos_topo = self.altura - self.CANO_TOPO.get_height()
         self.pos_base = self.altura + self.DISTANCIA
 
-    def mover(self):
-        self.x -= self.VELOCIDADE
+    def mover(self, pontos: float = 0):
+        parametro = pontos / 10
+        self.x -= self.VELOCIDADE + parametro
 
     def desenhar(self, tela):
         tela.blit(self.CANO_TOPO, (self.x, self.pos_topo))
@@ -178,7 +184,6 @@ class Cano:
             return True
         else:
             return False
-
 
 class Chao:
     VELOCIDADE = 5
@@ -203,7 +208,6 @@ class Chao:
         tela.blit(self.IMAGEM, (self.x1, self.y))
         tela.blit(self.IMAGEM, (self.x2, self.y))
 
-
 def desenhar_tela(tela, passaros, canos, chao, pontos):
     tela.blit(IMAGEM_BACKGROUND, (0, 0))
     for passaro in passaros:
@@ -216,66 +220,108 @@ def desenhar_tela(tela, passaros, canos, chao, pontos):
     chao.desenhar(tela)
     pygame.display.update()
 
-
-def main():
-    passaros = [Passaro(TELA_LARGURA // 4, TELA_ALTURA // 2)]
+def jogo():
+    passaros = [Passaro(230, 350)]
     chao = Chao(730)
-    canos = [Cano(800)]
-    tela = pygame.display.set_mode((TELA_LARGURA, TELA_ALTURA))
+    canos = [Cano(600)]
     pontos = 0
-    relogio = pygame.time.Clock()
-    pygame.mixer.music.play(-1)
-    contagem(3, tela)
+    clock = pygame.time.Clock()
     rodando = True
-    pygame.mixer.music.set_volume(0.3)
+    contagem(3, tela)
+    pygame.mixer.music.play(-1)
 
     while rodando:
-        relogio.tick(30)
+        clock.tick(30)
+        chao.mover()
 
-        # interação com o usuário
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 rodando = False
-                pygame.quit()
-                quit()
+                break
             if evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_SPACE:
-                    for passaro in passaros:
-                        passaro.pular()
-                        som_pulo.play()
+                    passaros[0].pular()
+                    som_pulo.play()
 
-        # mover as coisas
-        for passaro in passaros:
-            passaro.mover()
-        chao.mover()
+        add_cano = False
+        remove_canos = []
 
-        adicionar_cano = False
-        remover_canos = []
         for cano in canos:
-            for i, passaro in enumerate(passaros):
-                if cano.colidir(passaro):
-                    passaros.pop(i)
-                    pygame.mixer.music.stop()
-                    som_colisão.play()
-                if not cano.passou and passaro.x > cano.x:
-                    cano.passou = True
-                    adicionar_cano = True
-            cano.mover()
+            cano.mover(pontos)
             if cano.x + cano.CANO_TOPO.get_width() < 0:
-                remover_canos.append(cano)
+                remove_canos.append(cano)
 
-        if adicionar_cano:
+            if not cano.passou and cano.x < passaros[0].x:
+                cano.passou = True
+                add_cano = True
+
+            if cano.colidir(passaros[0]):
+                som_colisão.play()
+                rodando = False
+                break
+
+        if add_cano:
             pontos += 1
             canos.append(Cano(600))
-        for cano in remover_canos:
+
+        for cano in remove_canos:
             canos.remove(cano)
 
         for i, passaro in enumerate(passaros):
-            if (passaro.y + passaro.imagem.get_height()) > chao.y or passaro.y < 0:
-                passaros.pop(i)
+            passaro.mover()
+
+            if passaro.y + passaro.imagem.get_height() >= 730:
+                rodando = False
+                break
 
         desenhar_tela(tela, passaros, canos, chao, pontos)
 
+    pygame.mixer.music.stop()
+
+pygame.init()
+
+tela = pygame.display.set_mode((800, 600))
+pygame.display.set_caption('Pausa')
+pygame.display.flip()
+
+# Criando o grupo de sprites
+todos_sprites = pygame.sprite.Group()
+passaro = Passaro(100, 200)
+todos_sprites.add(passaro)
+
+# Variável de controle de pausa
+pausado = False
+
+# Relógio para controle de FPS
+clock = pygame.time.Clock()
+
+# Loop principal do jogo
+correndo = True
+while correndo:
+    for evento in pygame.event.get():
+        if evento.type == QUIT:
+            correndo = False
+
+        # Verifica se a tecla "P" foi pressionada para pausar/continuar
+        if evento.type == KEYDOWN and evento.key == K_p:
+            pausado = not pausado  # Alterna entre pausar e continuar
+
+    # Atualizando os sprites apenas se o jogo não estiver pausado
+    if not pausado:
+        todos_sprites.update()
+
+    # Atualiza a tela
+    tela.fill((255, 255, 255))  # Limpa a tela com a cor branca
+    todos_sprites.draw(tela)  # Desenha os sprites
+    pygame.display.flip()  # Atualiza a tela
+
+    # Controla a taxa de frames por segundo
+    clock.tick(60)
+
+    pygame.quit()
 
 if __name__ == '__main__':
-    main()
+    pygame.init()
+    tela = pygame.display.set_mode((TELA_LARGURA, TELA_ALTURA))
+    pygame.display.set_caption('Flappy Bird')
+    jogo()
